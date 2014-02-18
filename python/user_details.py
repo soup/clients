@@ -9,6 +9,9 @@ import logging
 import oauth2
 import yaml
 import os
+logging.basicConfig() 
+logging.getLogger().setLevel(logging.DEBUG)
+
 
 
 class AccessTokenMissing(Exception):
@@ -163,9 +166,14 @@ def get_details(consumer_token, consumer_secret, credentials_file="soup_tokens.y
     access_token = oauth2.Token(key=access_key, secret=access_secret)
     client = oauth2.Client(consumer, access_token)
 
+
+
     # Get user details
     user_details_url = "{0}/api/v1.1/authenticate".format(url_prefix)
-    response, data = client.request(user_details_url)
+
+    # we need to explicityl accept application/json, otherwise
+    # we won't get a result
+    response, data = client.request(user_details_url, headers={'accept': 'application/json'})
 
     if response.status == 401:
         # Either user revoked the access token, consumer tokes were revoked or time is off
