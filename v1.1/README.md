@@ -62,7 +62,8 @@ the specified callback. Parameters for this requests are `oauth_token` with
 the used token and `oauth_verifier`. <br />
 If the user denies the access soup.io redirects to the callback uri and
 sets the `error` parameter  to `access_denied`. This means the user
-explicitly denied access to her user profile. This behavior is different
+explicitly denied access to her user profile. This behavior is different to
+other standard OAuth implementations.
 
 3. The oauth token and oauth verifier have to replaced by an
 `access_token`. This `access_token` has to be used to identify an user in
@@ -98,7 +99,7 @@ without further notice.
 ### Base URL
 
 The base URL for the Soup API v1.1 is `https://api.soup.io/api/v1.1/`. All
-requests have to send via SSL.
+requests have to be send via SSL.
 
 ### User details
 
@@ -107,21 +108,21 @@ You can obtain user details for the currently used `access token` and
 e.g. `https://api.soup.io/api/v1.1/authenticate`.
 
 By accessing `/authenticate` you can ensure that the used access tokens are
-still valid. If they are no longer HTTP status code 401 (401 Unauthorized)
+still valid. If they are no longer valid, HTTP status code 401 (401 Unauthorized)
 is returned.
 
 An example output for the `/authenticate` is provided below. The most
 significant elements is the array `blogs`, consisting of all blogs,
 respective groups the user has access to.
 
-* `resoure` - is the base url for accessing or creating posts on the
+* `resource` - is the base url for accessing or creating posts on the
   specific blog
 * [`tags`](#tags) returns a list of tags used on the specific blog. This can be used
   to provide a completion when choosing the appropriate tag for a post
 * [`types`](#types) returns a list of resources for specific post types.
 * `permissions`
   * `approved` - part of the group, can post to this group
-  * `ownewr` - home blog, typically the users own blog
+  * `owner` - home blog, typically the users own blog
 
 ```json
 {
@@ -277,7 +278,7 @@ descriptive name for it, e.g. `images`, `videos`, `files` etc.
 ### Posts
 
 To create a post, send an HTTP `POST` requests to the url specified in
-[tags](#tags), e.g. to post a image send an HTTP POST request to
+[types](#types), e.g. to post a image send an HTTP POST request to
 `https://api.soup.io/api/v1.1/blogs/168342/posts/images`.
 
 When posting the content please don't forget to set the `Content-type` to
