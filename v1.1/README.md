@@ -3,7 +3,6 @@
 - [Overview](#overview)
   - [Contributions](#contributions)
   - [Restrictions](#restrictions)
-  - [Table of Contents](#table-of-contents)
 - [API v1.1](#api-v11)
   - [Authentication](#authentication)
   - [Base URL](#base-url)
