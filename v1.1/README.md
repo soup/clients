@@ -33,8 +33,6 @@ be advised that we can't guarantee backwards compatibility for future
 versions.
 
 
-### Table of Contents
-
 # API v1.1
 
 This version of the Soup.io API is designed mostly for posting and creating
