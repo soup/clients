@@ -6,12 +6,19 @@
 - [API v1.1](#api-v11)
 	- [Authentication](#authentication)
 		- [3 legged OAuth flow](#3-legged-oauth-flow)
+			- [OAuth endpoints](#oauth-endpoints)
+			- [Register your application](#register-your-application)
 		- [Base URL](#base-url)
 		- [User details](#user-details)
+			- [General remarks](#general-remarks)
 		- [Resources](#resources)
+			- [Error codes for resources](#error-codes-for-resources)
 - [Types](#types)
 	- [Example](#example)
 - [Posts](#posts)
+	- [General Remarks](#general-remarks)
+		- [Return value](#return-value)
+		- [HTTP Status codes](#http-status-codes)
 	- [Regular (text post)](#regular-text-post)
 	- [Links](#links)
 	- [Quotes](#quotes)
@@ -348,7 +355,7 @@ is `https://api.soup.io/api/v1.1/blogs/168342/posts/regular`.
 
 # Posts
 
-
+## General Remarks
 * To create a post, send an HTTP `POST` requests to the url specified in
   [types](#types), e.g. to post a image send an HTTP POST request to
   `https://api.soup.io/api/v1.1/blogs/168342/posts/images`.
@@ -359,6 +366,32 @@ is `https://api.soup.io/api/v1.1/blogs/168342/posts/regular`.
   not supported.
 * All fields in general are optional. If no field is specified an empty
   post is created.
+
+### Return value
+
+All successful posts generate a json dictionary with information about the
+created post. To see if the post was created successfully check the `id`
+property of the post.
+
+```json
+{ "post": {
+    "updated_at": "2014-05-07T05:41:15.318Z",
+    "created_at":"2014-05-07T05:41:15.320Z",
+     "id":155,
+     "blog_id":11,
+     ....
+  }
+}
+```
+### HTTP Status codes
+
+The API typically returns the following http status codes:
+* `201` - object created, aka post was created successfully
+* `401` - oauth signature does not verify, check time, do not reuse nonce
+  etc.
+* `404` - either the resource does not exist or the user does not have
+  access to it
+
 
 ## Regular (text post)
 
@@ -577,4 +610,5 @@ Following properties are supported for an event post:
 * Changed api endpoints to https://api.soup.io/api/
 * Changed oauth endpoints to api subdomain.
 * Added documentation about file uploads
-* Added missing posts
+* Added missing post types
+* Added http status codes
