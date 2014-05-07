@@ -1,15 +1,27 @@
 **Table of Contents**
 
 - [Overview](#overview)
-  - [Contributions](#contributions)
-  - [Restrictions](#restrictions)
+	- [Contributions](#contributions)
+	- [Restrictions](#restrictions)
 - [API v1.1](#api-v11)
-  - [Authentication](#authentication)
-  - [Base URL](#base-url)
-  - [User details](#user-details)
-  - [Types](#types)
-  - [Posts](#posts)
+	- [Authentication](#authentication)
+		- [3 legged OAuth flow](#3-legged-oauth-flow)
+		- [Base URL](#base-url)
+		- [User details](#user-details)
+		- [Resources](#resources)
+- [Types](#types)
+	- [Example](#example)
+- [Posts](#posts)
+	- [Regular (text post)](#regular-text-post)
+	- [Links](#links)
+	- [Quotes](#quotes)
+	- [Images](#images)
+	- [Video](#video)
+	- [Files](#files)
+	- [Reviews](#reviews)
+	- [Events](#events)
 - [Changelog](#changelog)
+	- [api v1.1](#api-v11)
 
 # Overview
 
@@ -19,13 +31,13 @@ considered complete or exhaustive. If you have any question regarding this
 document or the API, please contact [@developers](http://developers.soup.io) on Soup.
 
 
-### Contributions
+## Contributions
 
 We welcome any contribution to this document or example clients. In order
 to contribute please use the github issue tracker or directly send pull
 requests
 
-### Restrictions
+## Restrictions
 
 We don't provide any guarantees about this API and before using it please
 be advised that we can't guarantee backwards compatibility for future
@@ -40,12 +52,12 @@ settings or create groups. It can be used however to upload videos, music, image
 or post reviews.
 
 
-### Authentication
+## Authentication
 
 The Soup.io API is using a standard 3-legged OAuth 1.0A authentication to
 provide access to user profiles.
 
-#### 3 legged OAuth flow
+### 3 legged OAuth flow
 
 The auth flow is basically the same as with Twitter or other OAuth
 instances.
@@ -115,14 +127,16 @@ An example output for the `/authenticate` is provided below. The most
 significant elements is the array `blogs`, consisting of all blogs,
 respective groups the user has access to.
 
-* `resource` - is the base url for accessing or creating posts on the
+* [`resource`](#resource) - is the base url for accessing or creating posts on the
   specific blog
 * [`tags`](#tags) returns a list of tags used on the specific blog. This can be used
   to provide a completion when choosing the appropriate tag for a post
 * [`types`](#types) returns a list of resources for specific post types.
 * `permissions`
+  * `admin` - administrator of this group, can post and remove members
   * `approved` - part of the group, can post to this group
   * `owner` - home blog, typically the users own blog
+
 
 ```json
 {
@@ -252,13 +266,66 @@ respective groups the user has access to.
 }
 ```
 
+#### General remarks
 
-### Types
+* Accessing a resource which does not exist **or** the user does not have
+  access to will result in a http `404` error.
+* If you provide JSON,  please don't forget to set the `Content-type` to
+  `application/json`.
+* Uploading files requires to use form-encoded data. As form encoded data
+  is **not** required to be signed all file uploads at the moment are non signed.
+* The properties described for each post type should be inside a `post`
+  dictionary. To encode the properties `a`, `b`, and `c`:
+  * If you have to encode the data as file use the following field names:
+    * `post[a]`
+    * `post[b]`
+    * `post[c]`
+  * For json make sure that the properties are inside a post dictionary, e.g.:
 
-You have to use the `type` resource to get a list of possible posts you can
-create. `resource` specifies the url for the given resource and `name` the
-descriptive name for it, e.g. `images`, `videos`, `files` etc.
+```json
+        {
+          "post": {
+            "a": ...,
+            "b": ...,
+            "c", ...
+          }
+        }
+```
 
+
+### Resources
+A resource in the Soup.io API provides additional information for described
+element. The URI is `absolute` and must be used to get access.
+
+#### Error codes for resources
+
+Accessing resources which do not exist or the user does not have access to
+will result in a `http 404` error code.
+
+
+# Types
+
+Soup.io currently supports different posts type, such as `text`, `links`,
+`videos`, etc. Accessing the type resource will provide an array with
+possible types. The number of types can change in future implementation.
+For API v1.1 the following types do exist and can be identified via the
+`name` attribute:
+
+* [`regular`](#regular-text-post) equals to the text post on soup
+* [`links`](#links) equals to the link post on soup
+* [`quotes`](#quotes) equals to the quote post on soup
+* [`images`](#images) equals to the image post on soup
+* [`videos`](#videos) equals to the video post on soup
+* [`files`](#files) equals to the file post on soup
+* [`reviews`](#reviews) equals to the review post on soup
+* [`events`](#events) equals to the event post on soup
+* [`audio`](#files) equals to the file post on soup, uploading an audio
+file
+
+## Example
+
+By accessing  `https://api.soup.io/api/v1.1/blogs/168342/types`, extracted from the
+[`User`](#user-details) above, we can get the URI for a specific post type.
 
 ```json
 {
@@ -275,59 +342,239 @@ descriptive name for it, e.g. `images`, `videos`, `files` etc.
   ]
 }
 ```
-### Posts
 
-To create a post, send an HTTP `POST` requests to the url specified in
-[types](#types), e.g. to post a image send an HTTP POST request to
-`https://api.soup.io/api/v1.1/blogs/168342/posts/images`.
+For example, the URI to create a [`regular`](#regular-text-posts) post
+is `https://api.soup.io/api/v1.1/blogs/168342/posts/regular`.
 
-When posting the content please don't forget to set the `Content-type` to
-`application/json`.
+# Posts
 
-#### Regular (text post)
+
+* To create a post, send an HTTP `POST` requests to the url specified in
+  [types](#types), e.g. to post a image send an HTTP POST request to
+  `https://api.soup.io/api/v1.1/blogs/168342/posts/images`.
+* the return value is a json dict, containing an `id`, representing the post
+  and some other, currently unspecified values.
+* all posts can also be tagged. This is done by setting the `tags` field.
+  Tags are either separated by white-space or comma. A mixture of boths is
+  not supported.
+* All fields in general are optional. If no field is specified an empty
+  post is created.
+
+## Regular (text post)
 
 Following properties are supported for a regular post:
-* `title` - the title used for the post (optional)
+* `title` - the title used for the post
 * `body` - body of the post
-* `source` - source where the content was acquired from (optional)
+* `source` - source where the content was acquired from
 
 Example:
 ```json
-{ "post": { "body": "lorem ipsulum", "title": "Great content" } }
+{ "post": { "body": "lorem ipsulum", "title": "Great content", "tags": "old" } }
 ```
 
-#### Video
-Following properties are supported for a video post:
-* `url`- the url which should be included
-* `caption` - caption/body of the post (optional)
+## Links
+Following properties are supported for a link post:
+* `url` - the url of the link, aka source
+* `description` - body of the post, i.e. the description of the link
+* `caption` - title of the post
 
-Example:
 ```json
 {
   "post": {
-    "url": "http://www.youtube.com/watch?v=uq83lU6nuS8",
-    "caption": "A direkt video link (this is the caption of the video)"
-  }
+     "url": "https://soup.io",
+     "caption": "Your own space in the net",
+     "description": "Soup is an awesome place where you can do much....",
+     "tags": "first tag, second tag, 3rd tag"
+   }
 }
 ```
-
-### Quotes
+## Quotes
 Following properties are supported for the quote post:
 * `quote` - the quote itself
-* `source` - source of the quote (optional)
+* `source` - source of the quote
 
 Example:
 ```json
 { "post": { "source": "awesome book", "quote": "lorem ipsulum" } }
 ```
 
+## Images
+Following properties are supported for a image post:
+* `url` - url of an image to download
+* `description` - body of the post
+* `source` - source of the image
+* `file` - upload file, make sure to use form-encoded data to upload the
+  file
+
+### JSON Example
+```json
+{ "post":  {
+   "url": "http://imgs.xkcd.com/comics/coupon_code.png",
+   "description": "Another XKCD comic",
+   "source": "http://xkcd.com",
+   "tags": "xkcd comic"
+  }
+}
+
+```
+### File upload example
+
+This is an exempt how to upload an image with python
+
+```python
+params = { "post[source]": 'http://xkcd.com',
+           "post[description]": 'Another XKCD Comic',
+           "post[tags]": "xkcd comic"
+}
+
+r = requests.Request('POST', uri, auth=oauth_auth)
+prepared = r.prepare()
+auth_header = {'Authorization': prepared.headers.get('Authorization')}
+
+requests.post(uri,
+              files={'file': open('coupon_code.png')},
+              data=params, headers=auth_header)
+```
 
 
+## Video
+Following properties are supported for a video post:
+* `url`- url or embed code which should be used to display the video
+* `caption` - caption/body of the post  **deprecated**
+* `embed-code` - embed code or url which should be used to display the
+  video
+* `description` - caption/body of the post
+* `file` - file to upload
+
+Either `url`/`embed-code` or `file` should be present before posting. The
+API currently does not require any parameter to be set (similar to the Soup
+behavior) but you should set at least one of these parameters.
+
+### JSON Example
+
+```json
+{
+  "post": {
+    "url": "http://www.youtube.com/watch?v=uq83lU6nuS8",
+    "description": "A direct video link (this is the caption of the video)",
+    "tags": "youtube, video, example"
+  }
+}
+```
+
+### File upload example
+
+This is an exempt how to post with python
+
+```python
+params = { "post[source]": 'my mobile phone!',
+           "post[description]": 'An uploaded video',
+           "post[tags]": "embarrassing fun soup"
+}
+
+r = requests.Request('POST', uri, auth=oauth_auth)
+prepared = r.prepare()
+auth_header = {'Authorization': prepared.headers.get('Authorization')}
+
+requests.post(uri,
+              files={'file': open('video.mp4')},
+              data=params, headers=auth_header)
+```
+
+
+## Files
+Following properties are supported for a file post:
+* `url`- url of a file to download (currently not working)
+* `caption` - caption/body of the post **deprecated**
+* `description` - caption/body of the post
+* `file` - file to upload
+
+Either `url` or `file` should be set.
+
+
+### JSON Example
+
+```json
+{
+  "post": {
+    "url": "http://www.cs.uiuc.edu/homes/snir/PPP/models/gotoharmful.pdf",
+    "description": "A must read why goto is considered harmful"
+  }
+}
+```
+
+### File upload
+
+```python
+params = { "post[description]": 'A must read'
+}
+
+r = requests.Request('POST', uri, auth=oauth_auth)
+prepared = r.prepare()
+auth_header = {'Authorization': prepared.headers.get('Authorization')}
+
+requests.post(uri,
+              files={'file': open('gotoharmful.pdf')},
+              data=params, headers=auth_header)
+
+```
+## Reviews
+Following properties are supported for a file post:
+* `title`- title of the review
+* `review` - description of the review
+* `rating` - number of stars from zero to five
+* `url` - should point to what we reviewed
+* `file` - file to upload (TODO)
+
+rating should be an integer from zero to five, representing the number of
+stars for the given review.
+If url is set we try to download and display it, if the content is not
+suitable, we ignore it at the moment.
+
+Currently the behavior of the `file` property is unspecified.
+
+To rate the amazing paper from before we can use following example:
+
+```json
+{
+  "post": {
+    "url": "http://www.cs.uiuc.edu/homes/snir/PPP/models/gotoharmful.pdf",
+    "review": "A must read",
+    "rating": 5,
+    "tags": "opinion rating pdf compsci"
+  }
+}
+```
+
+## Events
+Following properties are supported for an event post:
+* `title` - title of the event
+* `location` - textual description of the location
+* `description` - description of the event
+* `start_date` - start date in
+  [rfc2822 format](http://www.w3.org/Protocols/rfc822/#z28)
+* `end_date` - end date in [rfc2822 format](http://www.w3.org/Protocols/rfc822/#z28)
+* `url` - currently undefined behavior
+* `file` - currently undefined behavior
+
+```json
+  "post": {
+    "title": "Soup.io meetup",
+    "location": "Vienna",
+    "description": "Come by and get red",
+    "start_date": "Tue, 01 Apr 2014 22:00:42 +0200",
+    "end_date": "Tue, 01 Apr 2014 22:42:00 +0200",
+    "tags": "attend hashtagrl"
+  }
+}
+```
 
 # Changelog
 
-### api v1.1
+## api v1.1
 
 * First public document
 * Changed api endpoints to https://api.soup.io/api/
 * Changed oauth endpoints to api subdomain.
+* Added documentation about file uploads
+* Added missing posts
