@@ -315,8 +315,8 @@ Description:
 * [`membership`](#membership) - manage the membership of a post,
   you can use `PUT` and `DELETE` to manage it. See
   [`membership`](#membership) for more details.
-* [`resource`](#group-resource) - create and delete groups for the specific
-  user, you can use `POST` and `DELETE` to manage your own groups.
+* [`resource`](#group-resource) - create  groups for the specific
+  user, you can use `POST` to manage your own groups.
 * [`available`](#available) - check the availability of the group name
 * [`search`](#search) - used to search for groups which can be joined
 
@@ -704,7 +704,6 @@ the user response. The following is the response from the user information.
 | PUT       | /groups/user/:id     | join group                       |
 | DELETE    | /groups/user/:id     | leave group                      |
 | POST      | /groups/             | create a new group               |
-| DELETE    | /groups/:id          | delete group with id             |
 | GET       | /groups/             | list of joined groups            |
 
 
@@ -823,7 +822,7 @@ and return the details of the group.
 
 The resource in the group property allows you to manage your groups.
 To create a new group send a HTTP `POST` request. For groups where you are
-admin you can modify them (HTTP `PUT` and append the id) or `DELETE` them.
+admin you can modify them (HTTP `PUT` and append the id)  them.
 
 
 ### Parameters
@@ -870,25 +869,6 @@ HTTP Return codes:
 * `400` if either `name` or `privacy` are missing
 * `412` if the name is already taken, name is invalid or privacy is invalid
 
-### Deleting a group
-`DELETE https://api.soup.io/api/v1.1/groups/:id` where `id` is the numeric
-id from before. In order to delete a group you will have to be the admin of
-the group. The returned data are the details of the group.
-
-For example:
-`DELETE https://api.soup.io/api/v1.1/groups/14` will return:
-
-```json
-{
-  "group":  {
-      "id": 14,
-      "image_url": null,
-      "name": "soup-over-tea",
-      "title": "soup-over-tea's soup",
-       "url": "http://soup-over-tea.soup.io"
-    }
-}
-```
 HTTP Return codes:
 * `200` if the group was deleted successfully
 * `404` if either the group does not exist or the user does not have admin privileges
