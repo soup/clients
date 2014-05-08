@@ -4,13 +4,15 @@
 	- [Contributions](#contributions)
 	- [Restrictions](#restrictions)
 - [API v1.1](#api-v11)
+	- [General remarks](#general-remarks)
 	- [Authentication](#authentication)
 		- [3 legged OAuth flow](#3-legged-oauth-flow)
 			- [OAuth endpoints](#oauth-endpoints)
 			- [Register your application](#register-your-application)
 		- [Base URL](#base-url)
 		- [User details](#user-details)
-			- [General remarks](#general-remarks)
+			- [groups](#groups)
+			- [blogs](#blogs)
 		- [Resources](#resources)
 			- [Error codes for resources](#error-codes-for-resources)
 - [Types](#types)
@@ -25,8 +27,16 @@
 	- [Images](#images)
 	- [Video](#video)
 	- [Files](#files)
+	- [General remarks](#general-remarks-1)
 	- [Reviews](#reviews)
 	- [Events](#events)
+- [Groups](#groups)
+	- [search](#search)
+	- [Available](#available)
+	- [Membership](#membership)
+	- [resource](#resource)
+		- [Creating a group](#creating-a-group)
+		- [Deleting a group](#deleting-a-group)
 - [Changelog](#changelog)
 	- [api v1.1](#api-v11)
 
@@ -57,6 +67,18 @@ This version of the Soup.io API is designed mostly for posting and creating
 content. Currently it can't be used to browse Soup, modify profile
 settings or create groups. It can be used however to upload videos, music, images
 or post reviews.
+
+
+## General remarks
+
+* Accessing a resource which does not exist **or** the user does not have
+  access to will result in a http `404` error.
+* If you provide JSON,  please don't forget to set the `Content-type` to
+  `application/json`.
+* Uploading files requires to use form-encoded data. As form encoded data
+  is **not** required to be signed all file uploads at the moment are non signed.
+* **All** of the described API methods are rate limited and may return HTTP
+  status code `403` at any time.
 
 
 ## Authentication
@@ -134,16 +156,11 @@ An example output for the `/authenticate` is provided below. The most
 significant elements is the array `blogs`, consisting of all blogs,
 respective groups the user has access to.
 
-* [`resource`](#resource) - is the base url for accessing or creating posts on the
-  specific blog
-* [`tags`](#tags) returns a list of tags used on the specific blog. This can be used
-  to provide a completion when choosing the appropriate tag for a post
-* [`types`](#types) returns a list of resources for specific post types.
-* `permissions`
-  * `admin` - administrator of this group, can post and remove members
-  * `approved` - part of the group, can post to this group
-  * `owner` - home blog, typically the users own blog
+The following properties are part of a user:
+* `blogs` - list of blogs the user has access to
+* `groups` - list of resources for managing groups
 
+The following is a complete example of user details:
 
 ```json
 {
@@ -267,20 +284,82 @@ respective groups the user has access to.
         }
       }
     ],
+    "groups": {
+       "membership": "https://api.soup.io/api/v1.1/groups/user/",
+       "resource": "https://api.soup.io/api/v1.1/groups/",
+       "available": "https://api.soup.io/api/v1.1/groups/available",
+       "search": "https://api.soup.io/api/v1.1/groups/user/search"
+    },
     "name": "mrud",
     "resource": "https://api.soup.io/api/v1.1/users/168364"
   }
 }
 ```
 
-#### General remarks
 
-* Accessing a resource which does not exist **or** the user does not have
-  access to will result in a http `404` error.
-* If you provide JSON,  please don't forget to set the `Content-type` to
-  `application/json`.
-* Uploading files requires to use form-encoded data. As form encoded data
-  is **not** required to be signed all file uploads at the moment are non signed.
+#### groups
+
+The following code is an example about the group interface for a specific
+user. This is returned as part of the authentication.
+
+```json
+"groups": {
+ "membership": "https://api.soup.io/api/v1.1/groups/user/",
+ "resource": "https://api.soup.io/api/v1.1/groups/",
+ "available": "https://api.soup.io/api/v1.1/groups/available",
+ "search": "https://api.soup.io/api/v1.1/groups/user/search"
+}
+```
+
+Description:
+* [`membership`](#membership) - manage the membership of a post,
+  you can use `PUT` and `DELETE` to manage it. See
+  [`membership`](#membership) for more details.
+* [`resource`](#group-resource) - create and delete groups for the specific
+  user, you can use `POST` and `DELETE` to manage your own groups.
+* [`available`](#available) - check the availability of the group name
+* [`search`](#search) - used to search for groups which can be joined
+
+
+#### blogs
+
+The following code is an example of a blog list with one blog element. This
+is returned as part of the authentication.
+
+```json
+"blogs": [
+  {
+    "blog": {
+      "features": { "upload_limit": 10485760 },
+      "image_url": "http://asset-4.soup.io/asset/4694/0703_458c_48.png",
+       "name": "mrud",
+       "permissions": ["owner"],
+       "resource": "https://api.soup.io/api/v1.1/blogs/168342",
+       "tags": { "resource": "https://api.soup.io/api/v1.1/blogs/168342/tags" },
+       "title": "mr. u's soup",
+       "types": { "resource": "https://api.soup.io/api/v1.1/blogs/168342/types" },
+       "url": "http://mrud.soup.io"
+    },
+    ...
+ }
+]
+
+```
+
+Description:
+* [`resource`](#resource) - is the base url for accessing or creating posts on the
+  specific blog
+* [`tags`](#tags) returns a list of tags used on the specific blog. This can be used
+  to provide a completion when choosing the appropriate tag for a post
+* [`types`](#types) returns a list of resources for specific post types.
+* `permissions`
+  * `admin` - administrator of this group, can post and remove members
+  * `approved` - part of the group, can post to this group
+  * `owner` - home blog, typically the users own blog
+
+
+General remarks
+---
 * The properties described for each post type should be inside a `post`
   dictionary. To encode the properties `a`, `b`, and `c`:
   * If you have to encode the data as file use the following field names:
@@ -602,6 +681,218 @@ Following properties are supported for an event post:
 }
 ```
 
+# Groups
+
+You can manage your group membership via the group resources provided in
+the user response. The following is the response from the user information.
+
+
+```json
+"groups": {
+ "membership": "https://api.soup.io/api/v1.1/groups/user/",
+ "resource": "https://api.soup.io/api/v1.1/groups/",
+ "available": "https://api.soup.io/api/v1.1/groups/available",
+ "search": "https://api.soup.io/api/v1.1/groups/user/search"
+}
+```
+
+
+| HTTP Verb | Url                  | Action                           |
+|-----------+----------------------+----------------------------------|
+| GET       | /groups/search?q=    | search for groups                |
+| GET       | /groups/available?q= | check if group name is available |
+| PUT       | /groups/user/:id     | join group                       |
+| DELETE    | /groups/user/:id     | leave group                      |
+| POST      | /groups/             | create a new group               |
+| DELETE    | /groups/:id          | delete group with id             |
+| GET       | /groups/             | list of joined groups            |
+
+
+## search
+
+`GET https://api.soup.io/api/v1.1/groups/user/search`
+
+### Parameters
+* `q` **(required)** - UTF-8 encoded search string
+
+### Return value
+
+An array containing matched groups. An empty array is returned if no matching group
+could be found.
+
+For the example `GET` request to
+`https://api.soup.io/api/v1.1/groups/user/search?q=test` we may get
+something like
+
+```json
+{
+  "groups": [
+    {
+      "id": 13,
+      "image_url": null,
+      "name": "testerlein",
+      "title": "testerlein's soup",
+       "url": "http://testerlein.soup.io"
+    },
+    {
+      "id": 14,
+      "image_url": null,
+      "name": "test2group",
+      "title": "test2group's soup",
+      "url": "http://test2group.soup.io"
+    }
+  ]
+}
+
+```
+
+If no match can be found an empty array is returned:
+
+```json
+{ "groups": [] }
+```
+
+## Available
+
+The idea behind this endpoint is to check in advance if a given name is
+still available.
+
+`GET https://api.soup.io/api/v1.1./groups/available`
+
+
+### Parameters
+* `q` **(required)** - UTF-8 encoded group name
+
+### Return value
+
+* HTTP `200` is returned if the name is free
+* HTTP `400` is returned if `q` is missing
+* HTTP `412` is returned if the name is already taken
+
+If the name is free we return a json object indicating the availability:
+
+`GET https://api.soup.io/api/v1.1/groups/available?q=the-best-name-evar`
+
+```json
+{  "status": "free" }
+```
+
+If the name is already taken, `status` is set to `used`.
+
+## Membership
+
+* To join a specific group you have to do send a `PUT` request, e.g.
+  `PUT https://api.soup.io/api/v1.1/groups/user/:ID`, this will
+  add you to the specific group.
+* To leave a specific group you have to send a `DELETE` request, e.g
+  `DELETE https://api.soup.io/api/v1.1/groups/user/:ID`, this
+  will leave the specific group.
+
+For both request type, HTTP status `202` is returned if the join/leave of
+the group was successful.
+
+To get a `ID` please use the search function.
+
+### Return value
+
+* An HTTP error code `404` is returned if the group with the `ID` does not
+  exist
+* The group details are returned as a json dict if the join/leave was
+  successful, e.g:
+
+Example requests:
+
+`PUT https://api.soup.io/api/v1.1/groups/user/13` - will join the group 13
+and return the details of the group.
+
+`DELETE https://api.soup.io/api/v1.1/groups/user/13` - will leave the group
+13 and return the details of the group.
+
+```json
+{
+  "group":  {
+      "id": 13,
+      "image_url": null,
+      "name": "testerlein",
+      "title": "testerlein's soup",
+       "url": "http://testerlein.soup.io"
+    }
+}
+```
+## resource
+
+The resource in the group property allows you to manage your groups.
+To create a new group send a HTTP `POST` request. For groups where you are
+admin you can modify them (HTTP `PUT` and append the id) or `DELETE` them.
+
+
+### Parameters
+* `name` **(required)** - the name of the group
+* `privacy` **(required)** - either `open`, `approval`, or `invite`.
+* `title`  (optional) - titel of the group
+* `image_url` (optional) - url of the avatar to be used on the web site
+
+If either name or privacy are missing HTTP status code `400` is returned,
+if the login does already exists or the username doesn't validate HTTP
+status code `412` is returned.
+
+
+Example:
+
+```json
+{
+  "group": {
+     "name": "soup-over-tea",
+     "privacy": "approval",
+  }
+}
+```
+
+### Creating a group
+`POST https://api.soup.io/api/v1.1/groups` with the example above
+will create a group called `soup-over-tea` where members have to be
+approved. The current user will be automatically group admin. The returned
+data is the details of the group:
+
+```json
+{
+  "group":  {
+      "id": 14,
+      "image_url": null,
+      "name": "soup-over-tea",
+      "title": "soup-over-tea's soup",
+       "url": "http://soup-over-tea.soup.io"
+    }
+}
+```
+HTTP Return codes:
+* `202` if the group was created
+* `400` if either `name` or `privacy` are missing
+* `412` if the name is already taken, name is invalid or privacy is invalid
+
+### Deleting a group
+`DELETE https://api.soup.io/api/v1.1/groups/:id` where `id` is the numeric
+id from before. In order to delete a group you will have to be the admin of
+the group. The returned data are the details of the group.
+
+For example:
+`DELETE https://api.soup.io/api/v1.1/groups/14` will return:
+
+```json
+{
+  "group":  {
+      "id": 14,
+      "image_url": null,
+      "name": "soup-over-tea",
+      "title": "soup-over-tea's soup",
+       "url": "http://soup-over-tea.soup.io"
+    }
+}
+```
+HTTP Return codes:
+* `200` if the group was deleted successfully
+* `404` if either the group does not exist or the user does not have admin privileges
+
 # Changelog
 
 ## api v1.1
@@ -612,3 +903,4 @@ Following properties are supported for an event post:
 * Added documentation about file uploads
 * Added missing post types
 * Added http status codes
+* Added group documentation
