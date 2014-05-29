@@ -1,7 +1,7 @@
 Clients
 =======
 
-This repo contains a list of example clients using the soup API, filed by API version. An uneven minor version denotes a work-in-progress with no guarantees whatsoever. An even minor version will represent a stable endpoint that you can ship an application with without fear of sudden discontinuation of service.
+This repo contains a list of example clients using the soup API, filed by API version. An odd minor version denotes a work-in-progress with no guarantees whatsoever. An even minor version will represent a stable endpoint that you can ship an application with without fear of sudden discontinuation of service.
 
 In order to use the soup API you have to register a client with soup.io via http://api.soup.io/oauth_clients/ - although this interface may migrate into your users admin panel at some point in time. Please consider using a soup group where you post updates for the application URL parameter.
 
