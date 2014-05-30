@@ -696,7 +696,7 @@ the user response. The following is the response from the user information.
 }
 ```
 
-
+```
 | HTTP Verb | Url                  | Action                           |
 |-----------+----------------------+----------------------------------|
 | GET       | /groups/search?q=    | search for groups                |
@@ -705,7 +705,7 @@ the user response. The following is the response from the user information.
 | DELETE    | /groups/user/:id     | leave group                      |
 | POST      | /groups/             | create a new group               |
 | GET       | /groups/             | list of joined groups            |
-
+```
 
 ## search
 
