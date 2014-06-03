@@ -36,7 +36,7 @@
 	- [Membership](#membership)
 	- [resource](#resource)
 		- [Creating a group](#creating-a-group)
-		- [Deleting a group](#deleting-a-group)
+	- [Listing joined groups](#listing-joined-groups)
 - [Changelog](#changelog)
 	- [api v1.1](#api-v11)
 
@@ -704,7 +704,7 @@ the user response. The following is the response from the user information.
 | PUT       | /groups/user/:id     | join group                       |
 | DELETE    | /groups/user/:id     | leave group                      |
 | POST      | /groups/             | create a new group               |
-| GET       | /groups/             | list of joined groups            |
+| GET       | /groups/user         | list of joined groups            |
 ```
 
 ## search
@@ -757,7 +757,6 @@ The idea behind this endpoint is to check in advance if a given name is
 still available.
 
 `GET https://api.soup.io/api/v1.1./groups/available`
-
 
 ### Parameters
 * `q` **(required)** - UTF-8 encoded group name
@@ -873,6 +872,50 @@ HTTP Return codes:
 * `200` if the group was deleted successfully
 * `404` if either the group does not exist or the user does not have admin privileges
 
+## Listing joined groups
+
+
+`GET https://api.soup.io/api/v1.1/groups/user/`
+
+### Parameters
+* none, all are ignored
+
+### Return value
+
+An array containing joined groups. An empty array is returned if no matching group
+could be found.
+
+For the example `GET` request to
+`https://api.soup.io/api/v1.1/groups/user/search` we may get
+something like
+
+```json
+{
+  "groups": [
+    {
+      "id": 13,
+      "image_url": null,
+      "name": "testerlein",
+      "title": "testerlein's soup",
+       "url": "http://testerlein.soup.io"
+    },
+    {
+      "id": 14,
+      "image_url": null,
+      "name": "test2group",
+      "title": "test2group's soup",
+      "url": "http://test2group.soup.io"
+    }
+  ]
+}
+
+```
+
+If no match can be found an empty array is returned:
+
+```json
+{ "groups": [] }
+```
 # Changelog
 
 ## api v1.1
@@ -884,3 +927,5 @@ HTTP Return codes:
 * Added missing post types
 * Added http status codes
 * Added group documentation
+* Adjust group list url
+* Add documentation for listing group membership
