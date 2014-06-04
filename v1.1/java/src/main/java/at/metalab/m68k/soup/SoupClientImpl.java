@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 
@@ -23,6 +25,7 @@ import org.scribe.model.Verifier;
 import org.scribe.oauth.OAuthService;
 
 import at.metalab.m68k.soup.resource.Blog;
+import at.metalab.m68k.soup.resource.Group;
 import at.metalab.m68k.soup.resource.PostResult;
 import at.metalab.m68k.soup.resource.User;
 import at.metalab.m68k.soup.resource.posts.Event;
@@ -107,7 +110,15 @@ public class SoupClientImpl implements SoupClient {
 
 	private Response send(OAuthRequest request) {
 		service.signRequest(accessToken, request);
-		return request.send();
+
+		System.out.println(String.format("[SEND]: %s %s", request.getVerb(),
+				request.getUrl()));
+
+		Response response = request.send();
+		System.out.println(String.format("[SEND]: SC=%d %s %s",
+				response.getCode(), request.getVerb(), request.getUrl()));
+
+		return response;
 	}
 
 	public User getUser() throws NotAuthorizedException {
@@ -287,6 +298,78 @@ public class SoupClientImpl implements SoupClient {
 				postNode.put("tags", post.getTags());
 			}
 		}.post(blog.getResource().concat("/posts/videos"));
+	}
+
+	public List<Group> groupSearch(String query) throws NotAuthorizedException {
+		OAuthRequest post = createRequest(Verb.GET,
+				soupApi(String.format("/groups/user/search?q=%s", query)), null);
+		Response response = send(post);
+
+		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
+			throw new NotAuthorizedException();
+		}
+
+		List<Group> groups = new ArrayList<Group>();
+
+		try {
+			JsonNode rootNode = OM.readTree(response.getBody());
+
+			for (JsonNode groupNode : rootNode.findValue("groups")) {
+				groups.add(Group.create(groupNode));
+			}
+		} catch (IOException ioException) {
+			ioException.printStackTrace();
+		}
+
+		return groups;
+	}
+
+	public void groupJoin(Group group) throws NotAuthorizedException {
+		OAuthRequest post = createRequest(Verb.PUT,
+				soupApi(String.format("/groups/user/%d", group.getId())), null);
+		Response response = send(post);
+
+		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
+			throw new NotAuthorizedException();
+		}
+
+		System.out.println(response.getBody());
+	}
+
+	public void groupLeave(Group group) throws NotAuthorizedException {
+		OAuthRequest post = createRequest(Verb.DELETE,
+				soupApi(String.format("/groups/user/%d", group.getId())), null);
+		Response response = send(post);
+
+		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
+			throw new NotAuthorizedException();
+		}
+
+		System.out.println(response.getBody());
+	}
+
+	public List<Group> groupsJoined() throws NotAuthorizedException {
+		OAuthRequest post = createRequest(Verb.GET, soupApi("/groups/user"), null);
+		Response response = send(post);
+
+		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
+			throw new NotAuthorizedException();
+		}
+
+		List<Group> groups = new ArrayList<Group>();
+
+		try {
+			String body = response.getBody();
+			JsonNode rootNode = OM.readTree(body);
+
+			for (JsonNode groupNode : rootNode.findValue("groups")) {
+				groups.add(Group.create(groupNode));
+			}
+		} catch (IOException ioException) {
+			ioException.printStackTrace(System.out);
+		}
+
+		return groups;
 	}
 
 	private static OAuthRequest createRequest(Verb verb, String url, String body) {
