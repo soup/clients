@@ -6,7 +6,7 @@ import java.util.List;
 import org.codehaus.jackson.JsonNode;
 
 /**
- * https://github.com/soup/clients/tree/master/v1.1#user-details
+ * https://github.com/soup/clients/tree/master/v1.1#return-value-1
  * 
  * @author m68k
  * 
