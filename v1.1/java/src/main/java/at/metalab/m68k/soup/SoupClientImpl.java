@@ -1,6 +1,7 @@
 package at.metalab.m68k.soup;
 
 import java.awt.Desktop;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -11,6 +12,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.mime.content.InputStreamBody;
+import org.apache.http.entity.mime.content.StringBody;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
@@ -255,18 +261,73 @@ public class SoupClientImpl implements SoupClient {
 
 	public PostResult post(Blog blog, final Image post)
 			throws NotAuthorizedException {
-		return new PostTemplate() {
+		if (post.getData() != null) {
+			// the image is provided via an inputstream. we will
+			// send this post as a multipart request.
 
-			@Override
-			protected void buildPostNode(ObjectNode postNode)
-					throws IOException, JsonMappingException,
-					JsonParseException {
-				postNode.put("url", post.getUrl());
-				postNode.put("description", post.getDescription());
-				postNode.put("source", post.getSource());
-				postNode.put("tags", post.getTags());
-			}
-		}.post(blog.getResource().concat("/posts/images"));
+			return new PostTemplate() {
+
+				@Override
+				protected void buildPostNode(ObjectNode postNode)
+						throws IOException, JsonMappingException,
+						JsonParseException {
+					// unused
+				}
+
+				@Override
+				public PostResult post(String url)
+						throws NotAuthorizedException {
+					OAuthRequest request = new OAuthRequest(Verb.POST, url);
+					service.signRequest(accessToken, request);
+
+					try {
+						HttpEntity reqEntity = MultipartEntityBuilder
+								.create()
+								.addPart(
+										"post[file]",
+										new InputStreamBody(post.getData(),
+												"filename"))
+								.addPart(
+										"post[tags]",
+										new StringBody(post.getTags(),
+												ContentType.TEXT_PLAIN))
+								.addPart(
+										"post[source]",
+										new StringBody(post.getSource(),
+												ContentType.TEXT_PLAIN))
+								.addPart(
+										"post[description]",
+										new StringBody(post.getDescription(),
+												ContentType.TEXT_PLAIN))
+								.build();
+
+						ByteArrayOutputStream o = new ByteArrayOutputStream();
+						reqEntity.writeTo(o);
+
+						request.addHeader(reqEntity.getContentType().getName(),
+								reqEntity.getContentType().getValue());
+						request.addPayload(o.toByteArray());
+
+						return createPostResult(request.send());
+					} catch (IOException ioException) {
+						throw new RuntimeException(ioException);
+					}
+				}
+			}.post(blog.getResource().concat("/posts/images"));
+		} else {
+			return new PostTemplate() {
+
+				@Override
+				protected void buildPostNode(ObjectNode postNode)
+						throws IOException, JsonMappingException,
+						JsonParseException {
+					postNode.put("url", post.getUrl());
+					postNode.put("description", post.getDescription());
+					postNode.put("source", post.getSource());
+					postNode.put("tags", post.getTags());
+				}
+			}.post(blog.getResource().concat("/posts/images"));
+		}
 	}
 
 	public PostResult post(Blog blog, final Quote post)
@@ -349,7 +410,8 @@ public class SoupClientImpl implements SoupClient {
 	}
 
 	public List<Group> groupsJoined() throws NotAuthorizedException {
-		OAuthRequest post = createRequest(Verb.GET, soupApi("/groups/user"), null);
+		OAuthRequest post = createRequest(Verb.GET, soupApi("/groups/user"),
+				null);
 		Response response = send(post);
 
 		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {

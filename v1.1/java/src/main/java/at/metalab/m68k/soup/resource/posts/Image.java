@@ -1,5 +1,7 @@
 package at.metalab.m68k.soup.resource.posts;
 
+import java.io.InputStream;
+
 /**
  * https://github.com/soup/clients/tree/master/v1.1#images
  * 
@@ -15,6 +17,16 @@ public class Image {
 	private String description;
 
 	private String tags;
+
+	private InputStream data;
+
+	public InputStream getData() {
+		return data;
+	}
+
+	public void setData(InputStream data) {
+		this.data = data;
+	}
 
 	public String getUrl() {
 		return url;
