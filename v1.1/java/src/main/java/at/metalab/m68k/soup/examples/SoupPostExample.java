@@ -1,5 +1,6 @@
 package at.metalab.m68k.soup.examples;
 
+import java.io.FileNotFoundException;
 import java.util.Calendar;
 import java.util.Properties;
 
@@ -8,6 +9,7 @@ import at.metalab.m68k.soup.OAuthHelper;
 import at.metalab.m68k.soup.SoupClient;
 import at.metalab.m68k.soup.SoupClientImpl;
 import at.metalab.m68k.soup.resource.Blog;
+import at.metalab.m68k.soup.resource.PostResult;
 import at.metalab.m68k.soup.resource.User;
 import at.metalab.m68k.soup.resource.posts.Event;
 import at.metalab.m68k.soup.resource.posts.Image;
@@ -60,6 +62,8 @@ public class SoupPostExample {
 		// postLink(soup, blog);
 		//
 		// postImage(soup, blog);
+		//
+		// postImageUpload(soup, blog);
 		//
 		// postReview(soup, blog);
 		//
@@ -114,6 +118,19 @@ public class SoupPostExample {
 		image.setSource("http://2.bp.blogspot.com/_cd6_MFUGTUE/S1MYZg7Cg5I/AAAAAAAAAOM/wMZw6bMjE14/s320/amok_01.jpg");
 		image.setTags("foo bar quux");
 		soup.post(blog, image);
+	}
+
+	private static void postImageUpload(SoupClient soup, Blog blog)
+			throws FileNotFoundException {
+		Image image = new Image();
+		image.setDescription("Soup badge");
+		image.setSource("http://www.soup.io");
+		image.setTags("java soup api");
+		image.setData(Thread.currentThread().getContextClassLoader()
+				.getResourceAsStream("examples/soup_badge.png"));
+
+		PostResult postResult = soup.post(blog, image);
+		System.out.println(postResult);
 	}
 
 	private static void postLink(SoupClient soup, Blog blog) {
