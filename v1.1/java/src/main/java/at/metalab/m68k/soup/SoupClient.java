@@ -8,6 +8,7 @@ import at.metalab.m68k.soup.resource.Group;
 import at.metalab.m68k.soup.resource.PostResult;
 import at.metalab.m68k.soup.resource.User;
 import at.metalab.m68k.soup.resource.posts.Event;
+import at.metalab.m68k.soup.resource.posts.FileUpload;
 import at.metalab.m68k.soup.resource.posts.Image;
 import at.metalab.m68k.soup.resource.posts.Link;
 import at.metalab.m68k.soup.resource.posts.Quote;
@@ -33,6 +34,8 @@ public interface SoupClient {
 	PostResult post(Blog blog, Quote post) throws NotAuthorizedException;
 
 	PostResult post(Blog blog, Video post) throws NotAuthorizedException;
+
+	PostResult post(Blog blog, FileUpload post) throws NotAuthorizedException;
 
 	List<Group> groupSearch(String query) throws NotAuthorizedException;
 
