@@ -1,6 +1,15 @@
 package at.metalab.m68k.soup.resource.posts;
 
+import java.io.IOException;
 import java.util.Calendar;
+
+import org.codehaus.jackson.JsonParseException;
+import org.codehaus.jackson.map.JsonMappingException;
+import org.codehaus.jackson.node.ObjectNode;
+
+import at.metalab.m68k.soup.http.SoupRequestBuilder;
+import at.metalab.m68k.soup.resource.Blog;
+import at.metalab.m68k.soup.resource.PostResult;
 
 /**
  * https://github.com/soup/clients/tree/master/v1.1#events
@@ -8,19 +17,25 @@ import java.util.Calendar;
  * @author m68k
  * 
  */
-public class Event {
+public class Event extends AbstractPost {
 
-	private String title;
+	@Override
+	protected SoupRequestBuilder<PostResult> createPost(Blog blog) {
+		return new JsonPostTemplate(blog, "/posts/events") {
 
-	private String location;
-
-	private String description;
-
-	private Calendar startDate;
-
-	private Calendar endDate;
-
-	private String tags;
+			@Override
+			protected void buildPostNode(ObjectNode postNode)
+					throws IOException, JsonMappingException,
+					JsonParseException {
+				postNode.put("location", getLocation());
+				postNode.put("description", getDescription());
+				postNode.put("start_date", formatRfc822(getStartDate()));
+				postNode.put("end_date", formatRfc822(getEndDate()));
+				postNode.put("title", getTitle());
+				postNode.put("tags", getTags());
+			}
+		};
+	}
 
 	public String getTitle() {
 		return title;

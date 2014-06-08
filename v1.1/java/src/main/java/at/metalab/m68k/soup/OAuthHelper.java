@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Properties;
 
 import org.scribe.model.Token;
@@ -72,14 +73,22 @@ public class OAuthHelper {
 	public static void storeAccessTokenProperties(
 			Properties accesstokenProperties, User user) {
 		try {
-			accesstokenProperties.store(
+			storeAccessTokenProperties(
+					accesstokenProperties,
+					user,
 					new FileOutputStream(new File(System
 							.getProperty("user.home"),
-							"soup_accesstoken.properties")), String.format(
-							"%s (%s)", user.getName(), user.getResource()));
+							"soup_accesstoken.properties")));
 		} catch (Exception exception) {
 			System.out.println("Could not store access token: "
 					+ exception.getMessage());
 		}
+	}
+
+	public static void storeAccessTokenProperties(
+			Properties accesstokenProperties, User user, OutputStream out)
+			throws IOException {
+		accesstokenProperties.store(out,
+				String.format("%s (%s)", user.getName(), user.getResource()));
 	}
 }

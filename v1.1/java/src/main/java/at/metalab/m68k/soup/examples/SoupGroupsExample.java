@@ -1,5 +1,7 @@
 package at.metalab.m68k.soup.examples;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.Properties;
 
 import at.metalab.m68k.soup.OAuthHelper;
@@ -25,11 +27,18 @@ public class SoupGroupsExample {
 		System.out.println("Query for sandbox:");
 		Group sandbox = null;
 		for (Group group : soup.groupSearch("sandbox")) {
-			System.out.println(group.getName() + ": " + group.getUrl() + " #" + group.getId());
+			System.out.println(group.getName() + ": " + group.getUrl() + " #"
+					+ group.getId());
 			sandbox = group;
 			break;
 		}
-		
+
 		soup.groupJoin(sandbox);
+		System.out.println("You should have joined the sandbox group now");
+		System.out.println("Press enter to leave it again...");
+		new BufferedReader(new InputStreamReader(System.in)).readLine();
+
+		soup.groupLeave(sandbox);
+		System.out.println("You should have left the sandbox group now");
 	}
 }

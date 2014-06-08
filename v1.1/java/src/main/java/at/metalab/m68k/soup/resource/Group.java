@@ -23,6 +23,8 @@ public class Group extends Resource {
 
 	private String url;
 
+	private PrivacyEnum privacy;
+
 	private List<String> permissions = new ArrayList<String>();
 
 	public int getId() {
@@ -69,6 +71,14 @@ public class Group extends Resource {
 		return title;
 	}
 
+	public void setPrivacy(PrivacyEnum privacy) {
+		this.privacy = privacy;
+	}
+
+	public PrivacyEnum getPrivacy() {
+		return privacy;
+	}
+
 	public static Group create(JsonNode groupNode) {
 		Group group = new Group();
 		group.setId(groupNode.get("id").getIntValue());
@@ -76,6 +86,10 @@ public class Group extends Resource {
 		group.setTitle(groupNode.get("title").getTextValue());
 		group.setUrl(groupNode.get("url").getTextValue());
 		group.setImageUrl(groupNode.get("image_url").getTextValue());
+		if (groupNode.has("privacy")) {
+			group.setPrivacy(PrivacyEnum.getByPropertyValue(groupNode.get(
+					"privacy").getTextValue()));
+		}
 
 		return group;
 	}

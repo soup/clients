@@ -1,6 +1,15 @@
 package at.metalab.m68k.soup.resource.posts;
 
+import java.io.IOException;
 import java.io.InputStream;
+
+import org.codehaus.jackson.JsonParseException;
+import org.codehaus.jackson.map.JsonMappingException;
+import org.codehaus.jackson.node.ObjectNode;
+
+import at.metalab.m68k.soup.http.SoupRequestBuilder;
+import at.metalab.m68k.soup.resource.Blog;
+import at.metalab.m68k.soup.resource.PostResult;
 
 /**
  * https://github.com/soup/clients/tree/master/v1.1#images
@@ -8,17 +17,49 @@ import java.io.InputStream;
  * @author m68k
  * 
  */
-public class Image {
+public class Image extends AbstractPost {
 
-	private String url;
+	private final static String ENDPOINT = "/posts/images";
 
-	private String source;
+	@Override
+	protected SoupRequestBuilder<PostResult> createPost(Blog blog) {
+		if (getData() != null) {
+			return new MultipartPostTemplate(blog, ENDPOINT) {
+				@Override
+				protected String getTags() {
+					return Image.this.getTags();
+				}
 
-	private String description;
+				@Override
+				protected String getFilename() {
+					return "not_applicable";
+				}
 
-	private String tags;
+				@Override
+				protected String getDescription() {
+					return Image.this.getDescription();
+				}
 
-	private InputStream data;
+				@Override
+				protected InputStream getData() {
+					return Image.this.getData();
+				}
+			};
+		} else {
+			return new JsonPostTemplate(blog, ENDPOINT) {
+
+				@Override
+				protected void buildPostNode(ObjectNode postNode)
+						throws IOException, JsonMappingException,
+						JsonParseException {
+					postNode.put("url", getUrl());
+					postNode.put("description", getDescription());
+					postNode.put("source", getSource());
+					postNode.put("tags", getTags());
+				}
+			};
+		}
+	}
 
 	public InputStream getData() {
 		return data;

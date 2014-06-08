@@ -1,6 +1,7 @@
 package at.metalab.m68k.soup.examples;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.Properties;
 
@@ -9,9 +10,9 @@ import at.metalab.m68k.soup.OAuthHelper;
 import at.metalab.m68k.soup.SoupClient;
 import at.metalab.m68k.soup.SoupClientImpl;
 import at.metalab.m68k.soup.resource.Blog;
-import at.metalab.m68k.soup.resource.PostResult;
 import at.metalab.m68k.soup.resource.User;
 import at.metalab.m68k.soup.resource.posts.Event;
+import at.metalab.m68k.soup.resource.posts.FileUpload;
 import at.metalab.m68k.soup.resource.posts.Image;
 import at.metalab.m68k.soup.resource.posts.Link;
 import at.metalab.m68k.soup.resource.posts.Quote;
@@ -46,10 +47,15 @@ public class SoupPostExample {
 
 		// select the blog which represents the users own soup
 		for (Blog writeableBlog : user.getBlogs()) {
-			if (writeableBlog.getPermissions().contains("owner")) {
+			if ("sandbox".equals(writeableBlog.getName())) {
 				blog = writeableBlog;
 				break;
 			}
+
+			// if (writeableBlog.getPermissions().contains("owner")) {
+			// blog = writeableBlog;
+			// break;
+			// }
 		}
 
 		System.out.println(String.format("Posting to soup '%s'",
@@ -62,16 +68,29 @@ public class SoupPostExample {
 		// postLink(soup, blog);
 		//
 		// postImage(soup, blog);
-		//
+		// //
 		// postImageUpload(soup, blog);
-		//
-		// postReview(soup, blog);
+		// //
+		postReview(soup, blog);
 		//
 		// postEvent(soup, blog);
 		//
 		// postQuote(soup, blog);
 		//
 		// postVideo(soup, blog);
+		//
+		// postFileUpload(soup, blog);
+	}
+
+	private static void postFileUpload(SoupClient soup, Blog blog)
+			throws IOException {
+		FileUpload fileUpload = new FileUpload();
+		fileUpload.setFilename("lorem_ipsum.txt");
+		fileUpload.setDescription("the description");
+		fileUpload.setTags("foo bar quux");
+		fileUpload.setData(Thread.currentThread().getContextClassLoader()
+				.getResourceAsStream("examples/lorem_ipsum.txt"));
+		soup.post(blog, fileUpload);
 	}
 
 	private static void postVideo(SoupClient soup, Blog blog) {
@@ -128,9 +147,7 @@ public class SoupPostExample {
 		image.setTags("java soup api");
 		image.setData(Thread.currentThread().getContextClassLoader()
 				.getResourceAsStream("examples/soup_badge.png"));
-
-		PostResult postResult = soup.post(blog, image);
-		System.out.println(postResult);
+		soup.post(blog, image);
 	}
 
 	private static void postLink(SoupClient soup, Blog blog) {
