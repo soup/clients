@@ -1,20 +1,38 @@
 package at.metalab.m68k.soup.resource.posts;
 
+import java.io.IOException;
+
+import org.codehaus.jackson.JsonParseException;
+import org.codehaus.jackson.map.JsonMappingException;
+import org.codehaus.jackson.node.ObjectNode;
+
+import at.metalab.m68k.soup.http.SoupRequestBuilder;
+import at.metalab.m68k.soup.resource.Blog;
+import at.metalab.m68k.soup.resource.PostResult;
+
 /**
  * https://github.com/soup/clients/tree/master/v1.1#links
  * 
  * @author m68k
  * 
  */
-public class Link {
+public class Link extends AbstractPost {
 
-	private String url;
+	@Override
+	protected SoupRequestBuilder<PostResult> createPost(Blog blog) {
+		return new JsonPostTemplate(blog, "/posts/links") {
 
-	private String caption;
-
-	private String description;
-
-	private String tags;
+			@Override
+			protected void buildPostNode(ObjectNode postNode)
+					throws IOException, JsonMappingException,
+					JsonParseException {
+				postNode.put("url", getUrl());
+				postNode.put("description", getDescription());
+				postNode.put("caption", getCaption());
+				postNode.put("tags", getTags());
+			}
+		};
+	}
 
 	public String getUrl() {
 		return url;

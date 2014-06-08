@@ -47,10 +47,15 @@ public class SoupPostExample {
 
 		// select the blog which represents the users own soup
 		for (Blog writeableBlog : user.getBlogs()) {
-			if (writeableBlog.getPermissions().contains("owner")) {
+			if ("sandbox".equals(writeableBlog.getName())) {
 				blog = writeableBlog;
 				break;
 			}
+
+			// if (writeableBlog.getPermissions().contains("owner")) {
+			// blog = writeableBlog;
+			// break;
+			// }
 		}
 
 		System.out.println(String.format("Posting to soup '%s'",
@@ -63,10 +68,10 @@ public class SoupPostExample {
 		// postLink(soup, blog);
 		//
 		// postImage(soup, blog);
-		//
+		// //
 		// postImageUpload(soup, blog);
-		//
-		// postReview(soup, blog);
+		// //
+		postReview(soup, blog);
 		//
 		// postEvent(soup, blog);
 		//

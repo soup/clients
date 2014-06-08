@@ -1,47 +1,31 @@
 package at.metalab.m68k.soup;
 
 import java.awt.Desktop;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
-import java.util.Locale;
 import java.util.Properties;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.InputStreamBody;
-import org.apache.http.entity.mime.content.StringBody;
 import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.JsonProcessingException;
 import org.codehaus.jackson.node.ObjectNode;
 import org.scribe.builder.ServiceBuilder;
-import org.scribe.model.OAuthRequest;
 import org.scribe.model.Response;
 import org.scribe.model.Token;
 import org.scribe.model.Verb;
 import org.scribe.model.Verifier;
 import org.scribe.oauth.OAuthService;
 
+import at.metalab.m68k.soup.http.SoupRequest;
+import at.metalab.m68k.soup.http.requests.BodylessJsonRequestImpl;
+import at.metalab.m68k.soup.http.requests.JsonRequestImpl;
 import at.metalab.m68k.soup.resource.Blog;
 import at.metalab.m68k.soup.resource.Group;
 import at.metalab.m68k.soup.resource.PostResult;
 import at.metalab.m68k.soup.resource.User;
-import at.metalab.m68k.soup.resource.posts.Event;
-import at.metalab.m68k.soup.resource.posts.FileUpload;
-import at.metalab.m68k.soup.resource.posts.Image;
-import at.metalab.m68k.soup.resource.posts.Link;
-import at.metalab.m68k.soup.resource.posts.Quote;
-import at.metalab.m68k.soup.resource.posts.Regular;
-import at.metalab.m68k.soup.resource.posts.Review;
-import at.metalab.m68k.soup.resource.posts.Video;
+import at.metalab.m68k.soup.resource.posts.Postable;
 import at.metalab.m68k.soup.scribe.LocalCallbackVerifier;
 import at.metalab.m68k.soup.scribe.SoupApi;
 
@@ -51,17 +35,11 @@ import at.metalab.m68k.soup.scribe.SoupApi;
  */
 public class SoupClientImpl implements SoupClient {
 
-	private final OAuthService service;
+	private final OAuthService oAuthService;
 
 	private Token accessToken;
 
 	private int localPort;
-
-	private class ErrorCodes {
-		private final static int NOT_AUTHORIZED = 401;
-
-		private final static int INTERNAL_SERVER_ERROR = 500;
-	}
 
 	public SoupClientImpl(Properties soupApiProperties,
 			Properties accessTokenProperties, int localPort) {
@@ -76,7 +54,7 @@ public class SoupClientImpl implements SoupClient {
 		String apiKey = soupApiProperties.getProperty("soup.api.key");
 		String apiSecret = soupApiProperties.getProperty("soup.api.secret");
 
-		this.service = new ServiceBuilder().provider(SoupApi.class)
+		this.oAuthService = new ServiceBuilder().provider(SoupApi.class)
 				.apiKey(apiKey).apiSecret(apiSecret)
 				.callback(String.format("http://127.0.0.1:%d", localPort))
 				.build();
@@ -91,10 +69,10 @@ public class SoupClientImpl implements SoupClient {
 			// running
 			verifier = new LocalCallbackVerifier(localPort);
 
-			requestToken = service.getRequestToken();
+			requestToken = oAuthService.getRequestToken();
 
 			// Open the browser to ask for permission
-			askForUserPermission(service, requestToken);
+			askForUserPermission(oAuthService, requestToken);
 		} catch (Exception exception) {
 			throw new RuntimeException("Could not start authentication",
 					exception);
@@ -102,7 +80,7 @@ public class SoupClientImpl implements SoupClient {
 
 		// This will block until the user has granted or denied permission
 		try {
-			accessToken = service.getAccessToken(requestToken, verifier);
+			accessToken = oAuthService.getAccessToken(requestToken, verifier);
 		} catch (NotAuthorizedException notAuthorizedException) {
 			// User clicked on deny
 			throw notAuthorizedException;
@@ -111,362 +89,154 @@ public class SoupClientImpl implements SoupClient {
 		return OAuthHelper.createAccessTokenProperties(accessToken);
 	}
 
-	public Token getAccessToken() {
-		return accessToken;
-	}
-
-	private Response send(OAuthRequest request) {
-		service.signRequest(accessToken, request);
-
-		System.out.println(String.format("[SEND]: %s %s", request.getVerb(),
-				request.getUrl()));
-
-		Response response = request.send();
-		System.out.println(String.format("[SEND]: SC=%d %s %s",
-				response.getCode(), request.getVerb(), request.getUrl()));
-
-		return response;
-	}
-
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see at.metalab.m68k.soup.SoupClient#getUser()
+	 */
 	public User getUser() throws NotAuthorizedException {
-		OAuthRequest request = new OAuthRequest(Verb.GET,
-				soupApi("/authenticate"));
-		Response response = send(request);
+		return send(new BodylessJsonRequestImpl<User>(Verb.GET,
+				soupApi("/authenticate")) {
 
-		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED
-				|| response.getCode() == ErrorCodes.INTERNAL_SERVER_ERROR) {
-			throw new NotAuthorizedException();
-		}
-
-		try {
-			User user = User
-					.create(OM.readTree(response.getBody()).get("user"));
-
-			return user;
-		} catch (Exception exception) {
-			throw new RuntimeException("could not parse response", exception);
-		}
+			@Override
+			protected User unmarshalJson(Response response)
+					throws JsonProcessingException, IOException {
+				return User.create(OM.readTree(response.getBody()).get("user"));
+			}
+		});
 	}
 
-	private final static ObjectMapper OM = new ObjectMapper();
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * at.metalab.m68k.soup.SoupClient#post(at.metalab.m68k.soup.resource.Blog,
+	 * at.metalab.m68k.soup.resource.posts.Postable)
+	 */
+	public PostResult post(Blog blog, Postable post)
+			throws NotAuthorizedException {
+		return send(post.createRequest(blog));
+	}
 
-	private abstract class JsonTemplate {
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see at.metalab.m68k.soup.SoupClient#groupSearch(java.lang.String)
+	 */
+	public List<Group> groupSearch(final String query)
+			throws NotAuthorizedException {
+		return send(new BodylessJsonRequestImpl<List<Group>>(Verb.GET,
+				soupApi(String.format("/groups/user/search?q=%s", query))) {
 
-		protected abstract void buildPostNode(ObjectNode postNode)
-				throws IOException, JsonMappingException, JsonParseException;
+			@Override
+			protected List<Group> unmarshalJson(Response response)
+					throws JsonProcessingException, IOException {
+				List<Group> groups = new ArrayList<Group>();
 
-		protected PostResult createPostResult(Response response)
-				throws IOException, JsonMappingException, JsonParseException {
-			JsonNode rootNode = OM.readTree(response.getBody());
-			JsonNode postNode = rootNode.get("post");
+				JsonNode rootNode = OM.readTree(response.getBody());
+				for (JsonNode groupNode : rootNode.findValue("groups")) {
+					groups.add(Group.create(groupNode));
+				}
 
-			PostResult p = new PostResult();
-			p.setBlogId(postNode.get("blog_id").getLongValue());
-			p.setId(postNode.get("id").getLongValue());
-			p.setCreatedAt(postNode.get("created_at").getTextValue());
-			p.setUpdatedAt(postNode.get("updated_at").getTextValue());
+				return groups;
+			}
+		});
+	}
 
-			return p;
-		}
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * at.metalab.m68k.soup.SoupClient#groupJoin(at.metalab.m68k.soup.resource
+	 * .Group)
+	 */
+	public Group groupJoin(Group group) throws NotAuthorizedException {
+		return send(new BodylessJsonRequestImpl<Group>(Verb.PUT,
+				soupApi(String.format("/groups/user/%d", group.getId()))) {
 
-		public PostResult post(String url) throws NotAuthorizedException {
-			try {
+			@Override
+			protected Group unmarshalJson(Response response)
+					throws JsonProcessingException, IOException {
+				return Group.create(OM.readTree(response.getBody()));
+			}
+		});
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see
+	 * at.metalab.m68k.soup.SoupClient#groupLeave(at.metalab.m68k.soup.resource
+	 * .Group)
+	 */
+	public Group groupLeave(Group group) throws NotAuthorizedException {
+		return send(new BodylessJsonRequestImpl<Group>(Verb.DELETE,
+				soupApi(String.format("/groups/user/%d", group.getId()))) {
+
+			@Override
+			protected Group unmarshalJson(Response response)
+					throws JsonProcessingException, IOException {
+				return Group.create(OM.readTree(response.getBody()));
+			}
+		});
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see at.metalab.m68k.soup.SoupClient#groupsJoined()
+	 */
+	public List<Group> groupsJoined() throws NotAuthorizedException {
+		return send(new BodylessJsonRequestImpl<List<Group>>(Verb.GET,
+				soupApi("/groups/user")) {
+
+			@Override
+			protected List<Group> unmarshalJson(Response response)
+					throws JsonProcessingException, IOException {
+				List<Group> groups = new ArrayList<Group>();
+
+				JsonNode rootNode = OM.readTree(response.getBody());
+				for (JsonNode groupNode : rootNode.findValue("groups")) {
+					groups.add(Group.create(groupNode));
+				}
+
+				return groups;
+			}
+		});
+	}
+
+	public Group groupCreate(final Group group) throws NotAuthorizedException {
+		return send(new JsonRequestImpl<Group>() {
+			@Override
+			protected at.metalab.m68k.soup.http.requests.JsonRequestImpl.JsonInput createJsonInput() {
 				ObjectNode rootNode = OM.createObjectNode();
 
-				ObjectNode postNode = OM.createObjectNode();
-				rootNode.put("post", postNode);
+				ObjectNode groupNode = OM.createObjectNode();
+				rootNode.put("group", groupNode);
 
-				buildPostNode(postNode);
+				groupNode.put("name", group.getName());
+				groupNode.put("title", group.getTitle());
+				groupNode.put("privacy", group.getPrivacy().getPropertyValue());
+				groupNode.put("image_url", group.getImageUrl());
 
-				String body = OM.writerWithDefaultPrettyPrinter()
-						.writeValueAsString(rootNode);
-				OAuthRequest post = createRequest(Verb.POST, url, body);
-				Response response = send(post);
+				try {
+					String body = OM.writerWithDefaultPrettyPrinter()
+							.writeValueAsString(rootNode);
 
-				if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
-					throw new NotAuthorizedException();
+					return new JsonInput(Verb.POST, soupApi("/groups"), body);
+				} catch (IOException ioException) {
+					throw new RuntimeException("Couldn't marshal json",
+							ioException);
 				}
-
-				return createPostResult(response);
-			} catch (IOException ioException) {
-				throw new RuntimeException("", ioException);
 			}
-		}
-	}
-
-	private abstract class MultipartTemplate extends JsonTemplate {
-		@Override
-		protected final void buildPostNode(ObjectNode postNode)
-				throws IOException, JsonMappingException, JsonParseException {
-		}
-
-		protected abstract HttpEntity buildEntity();
-
-		@Override
-		public PostResult post(String url) throws NotAuthorizedException {
-			OAuthRequest request = new OAuthRequest(Verb.POST, url);
-			service.signRequest(accessToken, request);
-
-			try {
-				HttpEntity reqEntity = buildEntity();
-
-				ByteArrayOutputStream o = new ByteArrayOutputStream();
-				reqEntity.writeTo(o);
-
-				request.addHeader(reqEntity.getContentType().getName(),
-						reqEntity.getContentType().getValue());
-				request.addPayload(o.toByteArray());
-
-				return createPostResult(request.send());
-			} catch (IOException ioException) {
-				throw new RuntimeException(ioException);
-			}
-		}
-	}
-
-	public PostResult post(Blog blog, final Regular post)
-			throws NotAuthorizedException {
-		return new JsonTemplate() {
 
 			@Override
-			protected void buildPostNode(ObjectNode postNode)
-					throws IOException, JsonMappingException,
-					JsonParseException {
-				postNode.put("title", post.getTitle());
-				postNode.put("body", post.getBody());
-				postNode.put("tags", post.getTags());
+			protected Group unmarshalJson(Response response)
+					throws JsonProcessingException, IOException {
+				return Group.create(OM.readTree(response.getBody())
+						.get("group"));
 			}
-		}.post(blog.getResource().concat("/posts/regular"));
-	}
-
-	public PostResult post(Blog blog, final Link post)
-			throws NotAuthorizedException {
-		return new JsonTemplate() {
-
-			@Override
-			protected void buildPostNode(ObjectNode postNode)
-					throws IOException, JsonMappingException,
-					JsonParseException {
-				postNode.put("url", post.getUrl());
-				postNode.put("description", post.getDescription());
-				postNode.put("caption", post.getCaption());
-				postNode.put("tags", post.getTags());
-			}
-		}.post(blog.getResource().concat("/posts/links"));
-	}
-
-	public PostResult post(Blog blog, final Review post)
-			throws NotAuthorizedException {
-		return new JsonTemplate() {
-
-			@Override
-			protected void buildPostNode(ObjectNode postNode)
-					throws IOException, JsonMappingException,
-					JsonParseException {
-				postNode.put("url", post.getUrl());
-				postNode.put("rating", post.getRating());
-				postNode.put("review", post.getReview());
-				postNode.put("title", post.getTitle());
-				postNode.put("tags", post.getTags());
-			}
-		}.post(blog.getResource().concat("/posts/reviews"));
-	}
-
-	public PostResult post(Blog blog, final Event post)
-			throws NotAuthorizedException {
-		return new JsonTemplate() {
-
-			@Override
-			protected void buildPostNode(ObjectNode postNode)
-					throws IOException, JsonMappingException,
-					JsonParseException {
-				postNode.put("location", post.getLocation());
-				postNode.put("description", post.getDescription());
-				postNode.put("start_date", formatRfc822(post.getStartDate()));
-				postNode.put("end_date", formatRfc822(post.getEndDate()));
-				postNode.put("title", post.getTitle());
-				postNode.put("tags", post.getTags());
-			}
-		}.post(blog.getResource().concat("/posts/events"));
-	}
-
-	public PostResult post(Blog blog, final Image post)
-			throws NotAuthorizedException {
-		if (post.getData() != null) {
-			return new MultipartTemplate() {
-
-				@Override
-				protected HttpEntity buildEntity() {
-					return MultipartEntityBuilder
-							.create()
-							.addPart(
-									"post[file]",
-									new InputStreamBody(post.getData(),
-											"filename"))
-							.addPart(
-									"post[tags]",
-									new StringBody(post.getTags(),
-											ContentType.TEXT_PLAIN))
-							.addPart(
-									"post[source]",
-									new StringBody(post.getSource(),
-											ContentType.TEXT_PLAIN))
-							.addPart(
-									"post[description]",
-									new StringBody(post.getDescription(),
-											ContentType.TEXT_PLAIN)).build();
-				}
-			}.post(blog.getResource().concat("/posts/images"));
-		} else {
-			return new JsonTemplate() {
-
-				@Override
-				protected void buildPostNode(ObjectNode postNode)
-						throws IOException, JsonMappingException,
-						JsonParseException {
-					postNode.put("url", post.getUrl());
-					postNode.put("description", post.getDescription());
-					postNode.put("source", post.getSource());
-					postNode.put("tags", post.getTags());
-				}
-			}.post(blog.getResource().concat("/posts/images"));
-		}
-	}
-
-	public PostResult post(Blog blog, final FileUpload post)
-			throws NotAuthorizedException {
-		return new MultipartTemplate() {
-
-			@Override
-			protected HttpEntity buildEntity() {
-				return MultipartEntityBuilder
-						.create()
-						.addPart(
-								"post[file]",
-								new InputStreamBody(post.getData(), post
-										.getFilename()))
-						.addPart(
-								"post[tags]",
-								new StringBody(post.getTags(),
-										ContentType.TEXT_PLAIN))
-						.addPart(
-								"post[description]",
-								new StringBody(post.getDescription(),
-										ContentType.TEXT_PLAIN)).build();
-			}
-		}.post(blog.getResource().concat("/posts/files"));
-	}
-
-	public PostResult post(Blog blog, final Quote post)
-			throws NotAuthorizedException {
-		return new JsonTemplate() {
-
-			@Override
-			protected void buildPostNode(ObjectNode postNode)
-					throws IOException, JsonMappingException,
-					JsonParseException {
-				postNode.put("quote", post.getQuote());
-				postNode.put("source", post.getSource());
-				postNode.put("tags", post.getTags());
-			}
-		}.post(blog.getResource().concat("/posts/quotes"));
-	}
-
-	public PostResult post(Blog blog, final Video post)
-			throws NotAuthorizedException {
-		return new JsonTemplate() {
-
-			@Override
-			protected void buildPostNode(ObjectNode postNode)
-					throws IOException, JsonMappingException,
-					JsonParseException {
-				postNode.put("url", post.getUrl());
-				postNode.put("embed-code", post.getEmbedCode());
-				postNode.put("description", post.getDescription());
-				postNode.put("tags", post.getTags());
-			}
-		}.post(blog.getResource().concat("/posts/videos"));
-	}
-
-	public List<Group> groupSearch(String query) throws NotAuthorizedException {
-		OAuthRequest post = createRequest(Verb.GET,
-				soupApi(String.format("/groups/user/search?q=%s", query)), null);
-		Response response = send(post);
-
-		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
-			throw new NotAuthorizedException();
-		}
-
-		List<Group> groups = new ArrayList<Group>();
-
-		try {
-			JsonNode rootNode = OM.readTree(response.getBody());
-
-			for (JsonNode groupNode : rootNode.findValue("groups")) {
-				groups.add(Group.create(groupNode));
-			}
-		} catch (IOException ioException) {
-			ioException.printStackTrace();
-		}
-
-		return groups;
-	}
-
-	public void groupJoin(Group group) throws NotAuthorizedException {
-		OAuthRequest post = createRequest(Verb.PUT,
-				soupApi(String.format("/groups/user/%d", group.getId())), null);
-		Response response = send(post);
-
-		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
-			throw new NotAuthorizedException();
-		}
-
-		System.out.println(response.getBody());
-	}
-
-	public void groupLeave(Group group) throws NotAuthorizedException {
-		OAuthRequest post = createRequest(Verb.DELETE,
-				soupApi(String.format("/groups/user/%d", group.getId())), null);
-		Response response = send(post);
-
-		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
-			throw new NotAuthorizedException();
-		}
-
-		System.out.println(response.getBody());
-	}
-
-	public List<Group> groupsJoined() throws NotAuthorizedException {
-		OAuthRequest post = createRequest(Verb.GET, soupApi("/groups/user"),
-				null);
-		Response response = send(post);
-
-		if (response.getCode() == ErrorCodes.NOT_AUTHORIZED) {
-			throw new NotAuthorizedException();
-		}
-
-		List<Group> groups = new ArrayList<Group>();
-
-		try {
-			String body = response.getBody();
-			JsonNode rootNode = OM.readTree(body);
-
-			for (JsonNode groupNode : rootNode.findValue("groups")) {
-				groups.add(Group.create(groupNode));
-			}
-		} catch (IOException ioException) {
-			ioException.printStackTrace(System.out);
-		}
-
-		return groups;
-	}
-
-	private static OAuthRequest createRequest(Verb verb, String url, String body) {
-		OAuthRequest post = new OAuthRequest(verb, url);
-		post.addHeader("Content-Type", "application/json");
-		post.addPayload(body);
-
-		return post;
+		});
 	}
 
 	/**
@@ -492,6 +262,14 @@ public class SoupClientImpl implements SoupClient {
 	}
 
 	/**
+	 * @param soupRequest
+	 * @return
+	 */
+	private <E> E send(SoupRequest<E> soupRequest) {
+		return soupRequest.send(oAuthService, accessToken);
+	}
+
+	/**
 	 * Returns the resource prefixed with the Soup API baseUrl.
 	 * 
 	 * @param resource
@@ -499,11 +277,6 @@ public class SoupClientImpl implements SoupClient {
 	 */
 	private static String soupApi(String resource) {
 		return String.format("%s%s", "https://api.soup.io/api/v1.1", resource);
-	}
-
-	private static String formatRfc822(Calendar calendar) {
-		return new SimpleDateFormat("E, d MMM yyyy HH:mm:ss Z", Locale.US)
-				.format(calendar.getTime());
 	}
 
 }

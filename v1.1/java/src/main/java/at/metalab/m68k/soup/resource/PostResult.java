@@ -1,5 +1,7 @@
 package at.metalab.m68k.soup.resource;
 
+import org.codehaus.jackson.JsonNode;
+
 /**
  * https://github.com/soup/clients/tree/master/v1.1#return-value
  * 
@@ -45,4 +47,13 @@ public class PostResult {
 		this.updatedAt = updatedAt;
 	}
 
+	public static PostResult create(JsonNode postNode) {
+		PostResult postResult = new PostResult();
+		postResult.setBlogId(postNode.get("blog_id").getLongValue());
+		postResult.setId(postNode.get("id").getLongValue());
+		postResult.setCreatedAt(postNode.get("created_at").getTextValue());
+		postResult.setUpdatedAt(postNode.get("updated_at").getTextValue());
+
+		return postResult;
+	}
 }
