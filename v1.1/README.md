@@ -92,13 +92,13 @@ The auth flow is basically the same as with Twitter or other OAuth
 instances.
 
 1. You have to request a token and secret from the
-request_token endpoint. This will be used to link your aplication with the
+request_token endpoint. This will be used to link your application with the
 user.
 
 2. Redirect the user to the authorize url, and use the
 previously acquired token from step one, e.g. for oauth1:
 `https://api.soup.io/oauth/authorize?oauth_token=TOKEN_STEP_1`
-<br />If the user allowed access to her account an redirect will be issued to
+<br />If the user allowed access to her account, a redirect will be issued to
 the specified callback. Parameters for this requests are `oauth_token` with
 the used token and `oauth_verifier`. <br />
 If the user denies the access soup.io redirects to the callback uri and
@@ -106,9 +106,9 @@ sets the `error` parameter  to `access_denied`. This means the user
 explicitly denied access to her user profile. This behavior is different to
 other standard OAuth implementations.
 
-3. The oauth token and oauth verifier have to replaced by an
+3. The oauth token and oauth verifier have to be exchanged into an
 `access_token`. This `access_token` has to be used to identify an user in
-the future. This can be achieved by accessing the `access_token` endpoint,
+the future. This is done by accessing the `access_token` endpoint,
 e.g `https://api.soup.io/oauth/access_token`
 
 
@@ -133,14 +133,14 @@ visiting
 [https://api.soup.io/ouath_clients/](http://api.soup.io/oauth_clients/).
 This URL provides also an overview about application given access to your
 account. These settings will be integrated into your normal profile
-version. The above URLs should be considered temporally and may change
+settings. The above URLs should be considered temporary and may change
 without further notice.
 
 
 ### Base URL
 
 The base URL for the Soup API v1.1 is `https://api.soup.io/api/v1.1/`. All
-requests have to be send via SSL.
+requests have to be sent via SSL.
 
 ### User details
 
@@ -380,7 +380,7 @@ General remarks
 
 
 ### Resources
-A resource in the Soup.io API provides additional information for described
+A resource in the Soup.io API provides additional information on a described
 element. The URI is `absolute` and must be used to get access.
 
 #### Error codes for resources
@@ -441,7 +441,7 @@ is `https://api.soup.io/api/v1.1/blogs/168342/posts/regular`.
 * the return value is a json dict, containing an `id`, representing the post
   and some other, currently unspecified values.
 * all posts can also be tagged. This is done by setting the `tags` field.
-  Tags are either separated by white-space or comma. A mixture of boths is
+  Tags are either separated by white-space or comma. A mixture of both is
   not supported.
 * All fields in general are optional. If no field is specified an empty
   post is created.
@@ -631,7 +631,7 @@ requests.post(uri,
 
 ```
 ## Reviews
-Following properties are supported for a file post:
+Following properties are supported for a review post:
 * `title`- title of the review
 * `review` - description of the review
 * `rating` - number of stars from zero to five
@@ -821,7 +821,7 @@ and return the details of the group.
 
 The resource in the group property allows you to manage your groups.
 To create a new group send a HTTP `POST` request. For groups where you are
-admin you can modify them (HTTP `PUT` and append the id)  them.
+admin you can modify (HTTP `PUT` and append the id)  them.
 
 
 ### Parameters
@@ -830,8 +830,8 @@ admin you can modify them (HTTP `PUT` and append the id)  them.
 * `title`  (optional) - titel of the group
 * `image_url` (optional) - url of the avatar to be used on the web site
 
-If either name or privacy are missing HTTP status code `400` is returned,
-if the login does already exists or the username doesn't validate HTTP
+If either name or privacy are missing, HTTP status code `400` is returned.
+If the login does already exist or the username doesn't validate, HTTP
 status code `412` is returned.
 
 
