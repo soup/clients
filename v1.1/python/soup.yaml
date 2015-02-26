@@ -1,4 +1,4 @@
-# register application on https://soup.io/oauth_clients/
+# register application on https://api.soup.io/oauth_clients/
 token:
 secret:
-callback: http://soup-login/
+callback: http://127.0.0.1:1337

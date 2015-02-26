@@ -12,8 +12,6 @@ import os
 logging.basicConfig() 
 logging.getLogger().setLevel(logging.DEBUG)
 
-
-
 class AccessTokenMissing(Exception):
     pass
 
@@ -37,53 +35,48 @@ class AccessToken(object):
         self.callback = callback
         self.oauth_verifier = None
 
-    def on_load(self, frame, request, action, *args):
-        """ used to extract the oauth verifier from the callback
-        """
-        url = action.get_uri()
-
-        if self.callback in url:
-            self.win.hide()
-
-            if "error" in url:
-                raise PermissionDenied
-
-            self.oauth_verifier = url.split('oauth_verifier=')[-1]
-            self.win.destroy()
-
-            return True
-
-        return False
-
     def verifier(self, url):
         """Get the verifier, should be a factory to instanciate the correct view, e.g pyqt or gtk or ask"""
 
-        try:
-            import gtk
-            import webkit
-        except ImportError:
-            import sys
+        import webbrowser
+        import BaseHTTPServer
 
-            logging.error("Please install python-webkit")
-            sys.exit(1)
+        # show user dialog
+        webbrowser.open_new(url)
 
-        self.view = webkit.WebView()
+        # open a small http server + handler for the one get request the
+        # redirect from the dialog we wil lreceive
+        class CatchHTTPPathHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write("Alrighty!")
+                # tell it to the server - is there a better way to communicate
+                # with instantianting code?
+                self.server.callback_path = self.path
 
-        sw = gtk.ScrolledWindow()
-        sw.add(self.view)
+        # we need the path from this one get request we will receive - make room for it
+        class CatchHTTPPathHTTPServer(BaseHTTPServer.HTTPServer):
+            def __init__(self, address, handler):
+                self.callback_path = None
+                return BaseHTTPServer.HTTPServer.__init__(self, address, handler) 
 
-        self.win = gtk.Window(gtk.WINDOW_TOPLEVEL)
-        self.win.set_geometry_hints(min_width=840, min_height=640)
-        self.win.set_position(gtk.WIN_POS_CENTER)
-        self.win.connect("destroy", lambda x: gtk.main_quit())
-        self.win.add(sw)
+        server_class=CatchHTTPPathHTTPServer
+        handler_class=CatchHTTPPathHandler
 
-        self.view.connect("navigation-policy-decision-requested", self.on_load)
+        server_address = ('127.0.0.1', 1337)
 
-        self.view.open(url)
-        self.win.show_all()
-        gtk.main()
+        # this will block until we get one request
+        print "Waiting for callback GET..."
+        httpd = server_class(server_address, handler_class)
+        httpd.handle_request()
 
+        callback_path = httpd.callback_path
+
+        if "error" in callback_path:
+            raise PermissionDenied
+
+        self.oauth_verifier = callback_path.split('oauth_verifier=')[-1]
         return self.oauth_verifier
 
     def tokens(self):
